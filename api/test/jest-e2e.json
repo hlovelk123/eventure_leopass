@@ -1,0 +1,19 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": "../",
+  "testEnvironment": "node",
+  "testRegex": ".e2e-spec.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": ["ts-jest", { "useESM": true, "tsconfig": "api/tsconfig.jest.json" }]
+  },
+  "moduleNameMapper": {
+    "^(\\.{1,2}/.*)\\.js$": "$1"
+  },
+  "globalSetup": "./test/setup-e2e.ts",
+  "globalTeardown": "./test/teardown-e2e.ts",
+  "testPathIgnorePatterns": ["/node_modules/", "dist"],
+  "displayName": {
+    "name": "e2e",
+    "color": "magenta"
+  }
+}

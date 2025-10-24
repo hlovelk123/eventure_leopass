@@ -1,0 +1,31 @@
+# Node
+node_modules/
+.pnpm/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build artifacts
+dist/
+build/
+coverage/
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# Editors
+.idea/
+.vscode/*
+!.vscode/mcp.json
+
+# Misc
+.DS_Store
+Thumbs.db
+
+# Docker
+Docker/**/*.tar
