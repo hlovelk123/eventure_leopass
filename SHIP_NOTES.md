@@ -19,6 +19,7 @@ Document key decisions, external references, and verification evidence per phase
 - Verified lint, unit, and build steps across API and web workspaces.
 - Refreshed Playwright browser binaries (`npx playwright install chromium firefox webkit`) ensuring future e2e runs.
 - Added Jest coverage for OTP & session services (real Postgres) and Vitest coverage for routing entry point.
+- CI pipeline now provisions Postgres 16 and applies Prisma migrations before running tests.
 
 ## Phase 2 – Token & Scan Flows
 
