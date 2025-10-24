@@ -36,7 +36,11 @@ export class AuthService {
       throw new BadRequestException('Account not found');
     }
 
-    await this.otpService.verifyOtp(params.challengeId, params.code);
+    const verification = await this.otpService.verifyOtp(params.challengeId, params.code);
+    if (verification.challenge.userId !== user.id || verification.challenge.purpose !== OtpPurpose.SIGN_IN) {
+      throw new UnauthorizedException('Verification challenge mismatch');
+    }
+
     await this.sessionService.createSession(user, params.response);
     await this.prisma.runWithClaims({ roles: ['system'] }, (tx) =>
       tx.user.update({
