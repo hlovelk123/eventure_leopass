@@ -27,7 +27,7 @@ describe('OtpService', () => {
     const configService = new ConfigService();
     prisma = new PrismaService(configService);
     await prisma.onModuleInit();
-    otpService = new OtpService(prisma, emailStub as unknown as EmailService, configService);
+    otpService = new OtpService(prisma, emailStub as unknown as EmailService);
     usersService = new UsersService(prisma);
   });
 
