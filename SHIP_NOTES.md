@@ -10,7 +10,17 @@ Document key decisions, external references, and verification evidence per phase
 
 ## Phase 1 – Data Model & Auth
 
-- _Pending_
+- Defined Prisma schema + migrations (users, clubs, events, passes, sessions, invites) with helper functions (`leopass.set_claims`) and RLS policies to isolate tenant data.
+- Added NestJS `AuthModule` covering OTP + WebAuthn flows, secure session cookies, and Cloudflare Turnstile verification (`turnstile.service.ts`).
+- Implemented ZeptoMail email adapter (API mode) for OTP delivery with development logging fallback. Reference: https://www.zoho.com/zeptomail/help/api/send-email.html.
+- Integrated `@simplewebauthn/server` for passkey registration/authentication with persisted challenges and credential burn ledger updates. Reference: https://simplewebauthn.dev/docs/server.
+- Normalized WebAuthn credential encoding (base64url → Uint8Array) to satisfy Nest build output and avoid SharedArrayBuffer typing issues.
+- React `/auth` route provides Turnstile widget, OTP login UI, and passkey registration/authentication using `@simplewebauthn/browser`.
+- Verified lint, unit, and build steps across API and web workspaces.
+- Refreshed Playwright browser binaries (`npx playwright install chromium firefox webkit`) ensuring future e2e runs.
+- Added Jest coverage for OTP & session services (real Postgres) and Vitest coverage for routing entry point.
+- CI pipeline now provisions Postgres 16 and applies Prisma migrations before running tests.
+- Hardened OTP verification against cross-account reuse by binding challenges to their issuing user and added regression tests for the bypass scenario.
 
 ## Phase 2 – Token & Scan Flows
 
