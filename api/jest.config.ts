@@ -14,6 +14,10 @@ const config: Config = {
     ]
   },
   moduleFileExtensions: ['ts', 'js', 'json'],
+  extensionsToTreatAsEsm: ['.ts'],
+  moduleNameMapper: {
+    '^(.*)\\.js$': '$1'
+  },
   testEnvironment: 'node',
   collectCoverageFrom: ['src/**/*.ts'],
   coverageDirectory: '../coverage/unit',

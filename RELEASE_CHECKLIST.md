@@ -3,7 +3,7 @@
 Track release readiness across phases. Mark items as they are completed.
 
 - [x] Phase 0 complete (tooling, CI, docs baseline)
-- [ ] Phase 1 complete (auth + data model)
+- [x] Phase 1 complete (auth + data model)
 - [ ] Phase 2 complete (token + scan flows)
 - [ ] Phase 3 complete (offline sync)
 - [ ] Phase 4 complete (UX experiences)

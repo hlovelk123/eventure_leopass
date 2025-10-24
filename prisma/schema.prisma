@@ -1,0 +1,426 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum RoleLevel {
+  MULTIPLE_COUNCIL
+  DISTRICT
+  CLUB
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+enum EventMode {
+  NO_RSVP
+  RSVP
+}
+
+enum MemberEventPassStatus {
+  PROVISIONED
+  ACTIVE
+  REVOKED
+}
+
+enum AttendanceMethod {
+  STEWARD
+  MANUAL
+}
+
+enum RsvpStatus {
+  INVITED
+  REGISTERED
+  APPROVED
+  WAITLISTED
+  DECLINED
+}
+
+enum OtpPurpose {
+  SIGN_IN
+  STEP_UP
+  RECOVERY
+}
+
+enum OtpChallengeStatus {
+  PENDING
+  VERIFIED
+  EXPIRED
+}
+
+enum NotificationChannel {
+  PUSH
+  EMAIL
+  IN_APP
+}
+
+enum NotificationPreference {
+  ENABLED
+  DISABLED
+}
+
+enum WebauthnChallengeType {
+  REGISTRATION
+  AUTHENTICATION
+}
+
+enum ReportCategory {
+  INVITED_GUESTS
+  LIONS
+  MULTIPLE_COUNCIL_OFFICERS
+  DISTRICT_COUNCIL_OFFICERS
+  CLUB_EXECUTIVE_OFFICERS
+  CLUB_MEMBERS
+  VISITING_LEOS
+  OUTSIDERS
+}
+
+model District {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  code      String?  @unique
+  clubs     Club[]
+  roleAssignments RoleAssignment[] @relation("RoleAssignmentDistrict")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Club {
+  id             String      @id @default(uuid()) @db.Uuid
+  name           String
+  code           String?     @unique
+  districtId     String?     @db.Uuid
+  district       District?   @relation(fields: [districtId], references: [id])
+  members        User[]
+  events         Event[]
+  hostLinks      EventHostClub[] @relation("EventHostClubClub")
+  roleAssignments RoleAssignment[] @relation("RoleAssignmentClub")
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+}
+
+model User {
+  id                String                     @id @default(uuid()) @db.Uuid
+  email             String                     @unique
+  displayName       String
+  phone             String?
+  locale            String?                    @default("en-LK")
+  status            UserStatus                 @default(INVITED)
+  primaryClubId     String?                    @db.Uuid
+  primaryClub       Club?                      @relation(fields: [primaryClubId], references: [id])
+  roleAssignments   RoleAssignment[]
+  webauthnCredentials WebauthnCredential[]
+  sessions          AuthSession[]
+  otpChallenges     EmailOtpChallenge[]
+  webauthnChallenges WebauthnChallenge[] @relation("UserWebauthnChallenges")
+  notificationPreferences UserNotificationPreference[]
+  notificationSubscriptions NotificationSubscription[]
+  attendanceSessions AttendanceSession[]       @relation("AttendanceUser")
+  invitedGuestsCreated InvitedGuestEventAttendee[] @relation("InvitedGuestCreatedBy")
+  invitedGuestsMerged  InvitedGuestEventAttendee[] @relation("InvitedGuestMergedUser")
+  eventPasses          MemberEventPass[]      @relation("UserEventPasses")
+  scanTokens           ScanToken[]            @relation("UserScanTokens")
+  rsvps                Rsvp[]                 @relation("UserRsvps")
+  scannerDevices       ScannerDevice[]        @relation("ScannerDeviceSteward")
+  auditLogs            AuditLog[]             @relation("AuditLogActor")
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+
+  @@index([primaryClubId])
+}
+
+model RoleAssignment {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @db.Uuid
+  user        User      @relation(fields: [userId], references: [id])
+  level       RoleLevel
+  roleTitle   String
+  districtId  String?   @db.Uuid
+  district    District? @relation("RoleAssignmentDistrict", fields: [districtId], references: [id])
+  clubId      String?   @db.Uuid
+  club        Club?     @relation("RoleAssignmentClub", fields: [clubId], references: [id])
+  startTs     DateTime
+  endTs       DateTime?
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([districtId])
+  @@index([clubId])
+}
+
+model WebauthnCredential {
+  credentialId String   @id
+  userId       String   @db.Uuid
+  user         User     @relation(fields: [userId], references: [id])
+  publicKey    String
+  signCount    Int      @default(0)
+  transports   String[]
+  deviceLabel  String?
+  lastUsedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  sessions     AuthSession[] @relation("CredentialSessions")
+}
+
+model AuthSession {
+  id                  String   @id @default(uuid()) @db.Uuid
+  userId              String   @db.Uuid
+  user                User     @relation(fields: [userId], references: [id])
+  sessionTokenHash    String   @unique
+  webauthnCredentialId String?
+  webauthnCredential   WebauthnCredential? @relation("CredentialSessions", fields: [webauthnCredentialId], references: [credentialId])
+  createdAt           DateTime @default(now())
+  expiresAt           DateTime
+  lastSeenAt          DateTime @default(now())
+  ipAddress           String?
+  userAgent           String?
+  isActive            Boolean  @default(true)
+  replacedBySessionId String?  @db.Uuid
+
+  @@index([userId])
+}
+
+model EmailOtpChallenge {
+  id            String             @id @default(uuid()) @db.Uuid
+  userId        String             @db.Uuid
+  user          User               @relation(fields: [userId], references: [id])
+  purpose       OtpPurpose
+  codeHash      String
+  codeSalt      String
+  expiresAt     DateTime
+  status        OtpChallengeStatus @default(PENDING)
+  attempts      Int                @default(0)
+  verifiedAt    DateTime?
+  consumedAt    DateTime?
+  turnstileToken String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@index([userId, purpose, status])
+}
+
+model WebauthnChallenge {
+  id          String                   @id @default(uuid()) @db.Uuid
+  userId      String?                  @db.Uuid
+  user        User?                    @relation("UserWebauthnChallenges", fields: [userId], references: [id])
+  type        WebauthnChallengeType
+  challenge   String
+  expiresAt   DateTime
+  createdAt   DateTime                @default(now())
+  consumedAt  DateTime?
+
+  @@index([userId, type])
+}
+
+model Event {
+  id                    String      @id @default(uuid()) @db.Uuid
+  name                  String
+  status                EventStatus @default(DRAFT)
+  mode                  EventMode   @default(NO_RSVP)
+  hostClubId            String?     @db.Uuid
+  hostClub              Club?       @relation(fields: [hostClubId], references: [id])
+  startTime             DateTime
+  endTime               DateTime
+  geofenceRadiusM       Int?        @default(100)
+  latitude              Float?
+  longitude             Float?
+  locationGeoJson       String?
+  capacity              Int?
+  reminderBeforeEndMin  Int?        @default(10)
+  autoCheckoutGraceMin  Int?        @default(5)
+  allowWalkIns          Boolean     @default(true)
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+  passes                MemberEventPass[]
+  tokens                ScanToken[]
+  attendance            AttendanceSession[]
+  rsvps                 Rsvp[]
+  invitedGuests         InvitedGuestEventAttendee[]
+  hostClubs             EventHostClub[] @relation("EventHostClubEvent")
+  guestPassTokens       InvitedGuestPassToken[]
+}
+
+model EventHostClub {
+  eventId String @db.Uuid
+  clubId  String @db.Uuid
+  event   Event  @relation("EventHostClubEvent", fields: [eventId], references: [id], onDelete: Cascade)
+  club    Club   @relation("EventHostClubClub", fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, clubId])
+}
+
+model MemberEventPass {
+  id            String                 @id @default(uuid()) @db.Uuid
+  eventId       String                 @db.Uuid
+  event         Event                  @relation(fields: [eventId], references: [id])
+  userId        String                 @db.Uuid
+  user          User                   @relation("UserEventPasses", fields: [userId], references: [id])
+  status        MemberEventPassStatus  @default(PROVISIONED)
+  provisionedAt DateTime               @default(now())
+  activatedAt   DateTime?
+  revokedAt     DateTime?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+
+  @@unique([eventId, userId])
+}
+
+model ScanToken {
+  jti             String   @id
+  eventId         String   @db.Uuid
+  event           Event    @relation(fields: [eventId], references: [id])
+  userId          String?  @db.Uuid
+  user            User?    @relation("UserScanTokens", fields: [userId], references: [id])
+  issuedAt        DateTime
+  notBefore       DateTime
+  expiresAt       DateTime
+  usedAt          DateTime?
+  usedByScannerId String?
+  signatureKid    String
+  createdAt       DateTime @default(now())
+  burnType        String   @default("member")
+}
+
+model AttendanceSession {
+  id              String            @id @default(uuid()) @db.Uuid
+  eventId         String            @db.Uuid
+  event           Event             @relation(fields: [eventId], references: [id])
+  userId          String?           @db.Uuid
+  user            User?             @relation("AttendanceUser", fields: [userId], references: [id])
+  invitedGuestId  String?           @db.Uuid
+  invitedGuest    InvitedGuestEventAttendee? @relation(fields: [invitedGuestId], references: [id])
+  checkInTs       DateTime?
+  checkInLocOk    Boolean?          @default(true)
+  checkOutTs      DateTime?
+  checkOutLocOk   Boolean?          @default(true)
+  method          AttendanceMethod  @default(STEWARD)
+  scannerDeviceId String?
+  scannerDevice   ScannerDevice?    @relation("ScannerDeviceSessions", fields: [scannerDeviceId], references: [id])
+  reportCategory  ReportCategory    @default(CLUB_MEMBERS)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+}
+
+model Rsvp {
+  id        String     @id @default(uuid()) @db.Uuid
+  eventId   String     @db.Uuid
+  event     Event      @relation(fields: [eventId], references: [id])
+  userId    String     @db.Uuid
+  user      User       @relation("UserRsvps", fields: [userId], references: [id])
+  status    RsvpStatus @default(INVITED)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([eventId, userId])
+}
+
+model ScannerDevice {
+  id             String   @id
+  stewardUserId  String   @db.Uuid
+  steward        User     @relation("ScannerDeviceSteward", fields: [stewardUserId], references: [id])
+  userAgentHash  String
+  firstSeenAt    DateTime @default(now())
+  lastSeenAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  sessions       AttendanceSession[] @relation("ScannerDeviceSessions")
+}
+
+model NotificationSubscription {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @db.Uuid
+  user       User     @relation(fields: [userId], references: [id])
+  endpoint   String
+  p256dh     String
+  auth       String
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  expiresAt  DateTime?
+  userAgent  String?
+  locale     String?  @default("en-LK")
+
+  @@unique([userId, endpoint])
+}
+
+model UserNotificationPreference {
+  id          String                  @id @default(uuid()) @db.Uuid
+  userId      String                  @db.Uuid
+  user        User                    @relation(fields: [userId], references: [id])
+  channel     NotificationChannel
+  preference  NotificationPreference  @default(ENABLED)
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+
+  @@unique([userId, channel])
+}
+
+model InvitedGuestEventAttendee {
+  id                  String                @id @default(uuid()) @db.Uuid
+  eventId             String                @db.Uuid
+  event               Event                 @relation(fields: [eventId], references: [id])
+  name                String
+  email               String?
+  type                String
+  createdByStewardId  String?               @db.Uuid
+  createdBy           User?                 @relation("InvitedGuestCreatedBy", fields: [createdByStewardId], references: [id])
+  checkInTime         DateTime?
+  checkInLocOk        Boolean?              @default(true)
+  checkOutTime        DateTime?
+  checkOutLocOk       Boolean?              @default(true)
+  method              AttendanceMethod      @default(MANUAL)
+  notes               String?
+  mergedUserId        String?               @db.Uuid
+  mergedUser          User?                 @relation("InvitedGuestMergedUser", fields: [mergedUserId], references: [id])
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  invitedGuestTokens  InvitedGuestPassToken[]
+  attendanceSessions  AttendanceSession[]
+}
+
+model InvitedGuestPassToken {
+  jti             String   @id
+  eventId         String   @db.Uuid
+  event           Event    @relation(fields: [eventId], references: [id])
+  guestAttendeeId String   @db.Uuid
+  guestAttendee   InvitedGuestEventAttendee @relation(fields: [guestAttendeeId], references: [id])
+  issuedAt        DateTime
+  expiresAt       DateTime
+  usedAt          DateTime?
+  usedByScannerId String?
+  signatureKid    String
+  createdAt       DateTime @default(now())
+}
+
+model AuditLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  actorUserId  String?  @db.Uuid
+  actor        User?    @relation("AuditLogActor", fields: [actorUserId], references: [id])
+  action       String
+  targetTable  String
+  targetId     String?
+  metadata     Json?
+  createdAt    DateTime @default(now())
+}
+
+model AppConfig {
+  key       String @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
