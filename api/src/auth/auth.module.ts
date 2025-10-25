@@ -14,6 +14,6 @@ import { EmailService } from './services/email.service.js';
   imports: [ConfigModule, PrismaModule, UsersModule],
   controllers: [AuthController],
   providers: [AuthService, SessionService, WebauthnService, OtpService, TurnstileService, EmailService],
-  exports: [SessionService, AuthService]
+  exports: [SessionService, AuthService, EmailService]
 })
 export class AuthModule {}

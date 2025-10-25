@@ -2,6 +2,19 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { toDataURL } from 'qrcode';
 import { useMemberToken } from '../../hooks/useMemberToken';
+import { getJson } from '../../lib/api';
+import { useNetworkStatus } from '../../hooks/useNetworkStatus';
+
+type MemberEventSummary = {
+  id: string;
+  name: string;
+  startTime: string;
+  endTime: string;
+  status: 'UPCOMING' | 'ACTIVE' | 'COMPLETE';
+  venue?: string | null;
+  allowWalkIns: boolean;
+  requireRsvp: boolean;
+};
 
 function formatDuration(expiresAt: Date | null): string {
   if (!expiresAt) return '';
@@ -11,12 +24,23 @@ function formatDuration(expiresAt: Date | null): string {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
+function formatDate(value: string): string {
+  return new Date(value).toLocaleDateString([], { dateStyle: 'medium' });
+}
+
+function formatTime(value: string): string {
+  return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
 export function MemberQrPage(): JSX.Element {
   const { eventId } = useParams<{ eventId: string }>();
   const navigate = useNavigate();
   const [dataUrl, setDataUrl] = useState<string | null>(null);
   const [expiresIn, setExpiresIn] = useState<string>('');
   const { token, expiresAt, error, isLoading, refresh } = useMemberToken(eventId ?? null);
+  const { isOnline } = useNetworkStatus();
+  const [eventDetail, setEventDetail] = useState<MemberEventSummary | null>(null);
+  const [detailError, setDetailError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -41,6 +65,33 @@ export function MemberQrPage(): JSX.Element {
       cancelled = true;
     };
   }, [token]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchEventDetail() {
+      if (!eventId) {
+        setEventDetail(null);
+        return;
+      }
+      try {
+        const detail = await getJson<MemberEventSummary>(`/member/events/${eventId}`);
+        if (!cancelled) {
+          setEventDetail(detail);
+          setDetailError(null);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          const message = err instanceof Error ? err.message : 'Unable to load event details';
+          setDetailError(message);
+        }
+      }
+    }
+
+    void fetchEventDetail();
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId]);
 
   useEffect(() => {
     if (!expiresAt) {
@@ -109,7 +160,19 @@ export function MemberQrPage(): JSX.Element {
         </p>
         <h1 className="text-3xl font-semibold text-brand">Event QR Token</h1>
         <p className="text-slate-600">Present this code to the steward for check-in.</p>
-        <p className="text-xs uppercase tracking-wide text-slate-400">Event ID: {eventId}</p>
+        {eventDetail ? (
+          <div className="space-y-1 text-sm text-slate-500">
+            <p className="font-medium text-slate-700">{eventDetail.name}</p>
+            <p>
+              {formatDate(eventDetail.startTime)} • {formatTime(eventDetail.startTime)} – {formatTime(eventDetail.endTime)}
+            </p>
+            <p className="text-xs uppercase tracking-wide text-slate-400">Event ID: {eventId}</p>
+          </div>
+        ) : (
+          <p className="text-xs uppercase tracking-wide text-slate-400">Event ID: {eventId}</p>
+        )}
+        {!isOnline && <p className="text-xs text-amber-600">Offline mode — scans will queue until you reconnect.</p>}
+        {detailError && <p className="text-xs text-red-600">{detailError}</p>}
       </header>
 
       <section className="rounded-3xl bg-white p-6 shadow-lg">

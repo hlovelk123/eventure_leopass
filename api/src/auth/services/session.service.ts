@@ -1,6 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AuthSession, Prisma, User } from '@prisma/client';
+import { AuthSession, Prisma, RoleAssignment, User } from '@prisma/client';
 import argon2 from 'argon2';
 import { randomBytes } from 'crypto';
 import { Response } from 'express';
@@ -14,9 +14,11 @@ export type SessionCookiePayload = {
   sessionToken: string;
 };
 
+export type SessionUser = User & { roleAssignments: RoleAssignment[] };
+
 export type ActiveSession = {
   session: AuthSession;
-  user: User;
+  user: SessionUser;
 };
 
 @Injectable()
@@ -103,7 +105,13 @@ export class SessionService {
     const session = await this.prisma.runWithClaims({ roles: ['system'] }, (tx) =>
       tx.authSession.findUnique({
         where: { id: sessionId },
-        include: { user: true }
+        include: {
+          user: {
+            include: {
+              roleAssignments: true
+            }
+          }
+        }
       })
     );
 
@@ -129,7 +137,7 @@ export class SessionService {
       })
     );
 
-    return { session, user: session.user };
+    return { session, user: session.user as SessionUser };
   }
 
   async invalidateSession(sessionId: string): Promise<void> {

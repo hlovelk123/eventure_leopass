@@ -40,11 +40,18 @@ Document key decisions, external references, and verification evidence per phase
 
 ## Phase 4 – Member/Steward/Admin UX
 
-- _Pending_
+- Added Nest `EventsModule` with role-scoped dashboards, steward walk-in/manual attendance handlers, and admin event CRUD/extension endpoints (leveraging new `role.utils` helpers).
+- Delivered React member dashboard (today/upcoming history + notifications), rotating QR detail page, and enriched steward scanner UI (JWKS refresh, offline queue controls, manual overrides, walk-in form).
+- Implemented admin console for totals, pending invites, event creation/extension, and quick toggles for walk-in/RSVP modes; wired to new REST endpoints.
+- Updated docs (`AGENTS.md`) and shared API client to support new routes; lint + type + build succeed (`npm run lint`, `npm run build`). Jest/Vitest suites now pass locally with Docker-backed Postgres + Redis (`docker compose up postgres redis -d`).
 
 ## Phase 5 – Notifications
 
-- _Pending_
+- Extended Prisma schema and migrations with `Notification`, `NotificationDelivery`, `NotificationSubscription`, and `UserNotificationPreference` tables plus RLS policies and helper enums.
+- Added Nest `NotificationsModule` (service, controller, BullMQ queue, processor) delivering in-app feed, web push (VAPID via `web-push`), and ZeptoMail email fallbacks with exponential retry/backoff.
+- Hardened manual steward attendance to emit event notifications; member dashboard now sources real feed items, tracks read state, and falls back to contextual reminders when feed empty.
+- Implemented web push subscription helpers (`web/src/lib/pushNotifications.ts`) with PWA readiness detection, permission prompts, and API wiring (register/remove subscription, toggle preferences) exposed in the member dashboard UI.
+- Updated `.env.example`, README, and env validation for `WEB_PUSH_VAPID_*`, `ENABLE_PUSH_NOTIFICATIONS`, and `VITE_WEB_PUSH_VAPID_PUBLIC_KEY`. Added Jest coverage for notifications service flow and refined events spec mocks; `npm run lint`, `npm run test --workspace @eventure-leopass/api`, and `npm run test --workspace @eventure-leopass/web` all green (Postgres/Redis via Docker).
 
 ## Phase 6 – Reporting
 

@@ -7,6 +7,7 @@ import { AuthPage } from './AuthPage';
 const MemberDashboardPage = lazy(() => import('./member/MemberDashboardPage').then((mod) => ({ default: mod.MemberDashboardPage })));
 const MemberQrPage = lazy(() => import('./member/MemberQrPage').then((mod) => ({ default: mod.MemberQrPage })));
 const StewardScannerPage = lazy(() => import('./steward/StewardScannerPage').then((mod) => ({ default: mod.StewardScannerPage })));
+const AdminDashboardPage = lazy(() => import('./admin/AdminDashboardPage').then((mod) => ({ default: mod.AdminDashboardPage })));
 
 export default function App(): JSX.Element {
   return (
@@ -17,6 +18,7 @@ export default function App(): JSX.Element {
         <Route path="/member" element={<MemberDashboardPage />} />
         <Route path="/member/events/:eventId/token" element={<MemberQrPage />} />
         <Route path="/steward/scan" element={<StewardScannerPage />} />
+        <Route path="/admin" element={<AdminDashboardPage />} />
       </Routes>
     </Suspense>
   );

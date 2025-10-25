@@ -1,7 +1,7 @@
 const envApi = import.meta.env.VITE_API_URL as string | undefined;
 const API_BASE = envApi ?? 'http://localhost:3000';
 
-type HttpMethod = 'GET' | 'POST' | 'DELETE';
+type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 
 type RequestOptions = {
   method?: HttpMethod;
@@ -42,4 +42,20 @@ export function postJson<TResponse>(path: string, body: unknown, options: PostOp
 
 export function getJson<TResponse>(path: string): Promise<TResponse> {
   return request<TResponse>(path, { method: 'GET' });
+}
+
+export function patchJson<TResponse>(path: string, body: unknown, options: PostOptions = {}): Promise<TResponse> {
+  return request<TResponse>(path, { method: 'PATCH', body, headers: options.headers });
+}
+
+export function putJson<TResponse>(path: string, body: unknown, options: PostOptions = {}): Promise<TResponse> {
+  return request<TResponse>(path, { method: 'PUT', body, headers: options.headers });
+}
+
+export function deleteJson<TResponse>(path: string, body?: unknown, options: PostOptions = {}): Promise<TResponse> {
+  return request<TResponse>(path, {
+    method: 'DELETE',
+    body,
+    headers: options.headers
+  });
 }
