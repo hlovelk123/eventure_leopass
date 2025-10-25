@@ -80,6 +80,12 @@ enum WebauthnChallengeType {
   AUTHENTICATION
 }
 
+enum TokenSigningKeyStatus {
+  ACTIVE
+  ROTATING
+  RETIRED
+}
+
 enum ReportCategory {
   INVITED_GUESTS
   LIONS
@@ -294,8 +300,12 @@ model ScanToken {
   usedAt          DateTime?
   usedByScannerId String?
   signatureKid    String
+  signingKey      TokenSigningKey @relation(fields: [signatureKid], references: [kid])
   createdAt       DateTime @default(now())
   burnType        String   @default("member")
+  attendanceSessionId   String? @db.Uuid
+  attendanceSession     AttendanceSession? @relation(fields: [attendanceSessionId], references: [id])
+  consumedIdempotencyKey String? @unique
 }
 
 model AttendanceSession {
@@ -316,6 +326,7 @@ model AttendanceSession {
   reportCategory  ReportCategory    @default(CLUB_MEMBERS)
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
+  scanTokens      ScanToken[]
 }
 
 model Rsvp {
@@ -405,7 +416,21 @@ model InvitedGuestPassToken {
   usedAt          DateTime?
   usedByScannerId String?
   signatureKid    String
+  signingKey      TokenSigningKey @relation(fields: [signatureKid], references: [kid])
   createdAt       DateTime @default(now())
+}
+
+model TokenSigningKey {
+  kid               String                @id
+  publicKey         String
+  privateKey        String
+  status            TokenSigningKeyStatus @default(ACTIVE)
+  createdAt         DateTime              @default(now())
+  activatedAt       DateTime              @default(now())
+  rotatedAt         DateTime?
+  expiresAt         DateTime?
+  scanTokens        ScanToken[]
+  invitedGuestTokens InvitedGuestPassToken[]
 }
 
 model AuditLog {

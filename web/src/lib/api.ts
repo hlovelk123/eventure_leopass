@@ -32,8 +32,12 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return (await response.json()) as T;
 }
 
-export function postJson<TResponse>(path: string, body: unknown): Promise<TResponse> {
-  return request<TResponse>(path, { method: 'POST', body });
+type PostOptions = {
+  headers?: Record<string, string>;
+};
+
+export function postJson<TResponse>(path: string, body: unknown, options: PostOptions = {}): Promise<TResponse> {
+  return request<TResponse>(path, { method: 'POST', body, headers: options.headers });
 }
 
 export function getJson<TResponse>(path: string): Promise<TResponse> {

@@ -65,16 +65,19 @@ npm run e2e -- --project=chromium
 
 ## Key API Endpoints (Phase 1)
 
-| Method | Endpoint                              | Description                                         |
-| ------ | ------------------------------------- | --------------------------------------------------- |
-| `POST` | `/api/auth/otp/request`               | Request email OTP (requires Turnstile token)        |
-| `POST` | `/api/auth/otp/verify`                | Verify OTP, create secure session cookie            |
-| `POST` | `/api/auth/webauthn/register/options` | Get passkey registration options (session required) |
-| `POST` | `/api/auth/webauthn/register/verify`  | Persist new passkey credential                      |
-| `POST` | `/api/auth/webauthn/login/options`    | Get passkey authentication options by email         |
-| `POST` | `/api/auth/webauthn/login/verify`     | Verify passkey assertion and sign in                |
-| `POST` | `/api/auth/logout`                    | Invalidate current session                          |
-| `GET`  | `/api/auth/session`                   | Return session user summary                         |
+| Method | Endpoint                              | Description                                              |
+| ------ | ------------------------------------- | -------------------------------------------------------- |
+| `POST` | `/api/auth/otp/request`               | Request email OTP (requires Turnstile token)             |
+| `POST` | `/api/auth/otp/verify`                | Verify OTP, create secure session cookie                 |
+| `POST` | `/api/auth/webauthn/register/options` | Get passkey registration options (session required)      |
+| `POST` | `/api/auth/webauthn/register/verify`  | Persist new passkey credential                           |
+| `POST` | `/api/auth/webauthn/login/options`    | Get passkey authentication options by email              |
+| `POST` | `/api/auth/webauthn/login/verify`     | Verify passkey assertion and sign in                     |
+| `POST` | `/api/auth/logout`                    | Invalidate current session                               |
+| `GET`  | `/api/auth/session`                   | Return session user summary                              |
+| `GET`  | `/api/member/events/:eventId/token`   | Issue rotating Ed25519 QR token for the member (30s TTL) |
+| `POST` | `/api/scan`                           | Steward scan endpoint (idempotent, enforces burn ledger) |
+| `GET`  | `/api/.well-known/jwks.json`          | JWKS exposing active Ed25519 public keys                 |
 
 All requests that mutate auth state must include the Turnstile token (see `TurnstileWidget` for the front-end integration). Sessions are returned as `lp_session` HttpOnly cookies valid for 24h.
 
@@ -83,6 +86,10 @@ All requests that mutate auth state must include the Turnstile token (see `Turns
 - Vite is configured with Tailwind + shadcn/ui utility classes.
 - Turnstile site key is read from `VITE_CF_TURNSTILE_SITE_KEY`.
 - Passkeys require a secure origin when deployed; during local dev Vite serves over HTTP with platform authenticator support (Chrome/Edge recommended).
+- The PWA registers a Workbox service worker (`vite-plugin-pwa`) for asset caching and JWKS refresh; build before testing install/offline flows.
+- Steward scanner (`/steward/scan`) validates tokens locally, queues scans in IndexedDB (≤500 entries, 48h TTL), and syncs automatically when back online.
+- Member QR tokens live at `/member/events/:eventId/token`; rotating codes refresh every 30 seconds with manual refresh fallback.
+- Member QR tokens available at `/member` → `/member/events/:eventId/token`; steward camera scanner lives at `/steward/scan` powered by ZXing.
 
 ## Tooling & CI
 

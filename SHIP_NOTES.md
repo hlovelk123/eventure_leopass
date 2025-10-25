@@ -24,11 +24,19 @@ Document key decisions, external references, and verification evidence per phase
 
 ## Phase 2 – Token & Scan Flows
 
-- _Pending_
+- Added `TokenSigningKey` table with status lifecycle and Prisma ledger columns for scan tokens (idempotency key, attendance linkage).
+- Implemented Nest token services: Ed25519 signer with JWKS endpoint and member token issuance API guarded by sessions.
+- Added scan processing service/controller enforcing ±90s skew, event window, pass status, and idempotent check-in/out transitions.
+- Created Jest coverage for signer, token issuance, and scan flows (including idempotent retries and checkout path) running against Postgres/Redis in Docker.
+- React PWA now exposes member QR pages with auto-rotating tokens and a steward camera scanner with ZXing + idempotent submissions.
+- API helper supports custom headers for scans; Vitest coverage asserts navigation to new member/steward routes.
 
 ## Phase 3 – Steward Offline & Sync
 
-- _Pending_
+- Added Workbox-powered PWA setup (vite-plugin-pwa) caching static assets and JWKS with 6h refresh cadence.
+- Steward scanner performs local Ed25519 verification using cached JWKS and queues scans to IndexedDB (≤500 entries, 48h TTL) when offline.
+- IndexedDB queue auto-syncs when connectivity returns; UI surfaces offline badge, queued counts, and manual sync triggers.
+- Service worker + hooks instrument offline banners and member QR routes to surface rotating tokens even with transient network loss.
 
 ## Phase 4 – Member/Steward/Admin UX
 

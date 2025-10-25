@@ -13,6 +13,7 @@ import { EmailService } from './services/email.service.js';
 @Module({
   imports: [ConfigModule, PrismaModule, UsersModule],
   controllers: [AuthController],
-  providers: [AuthService, SessionService, WebauthnService, OtpService, TurnstileService, EmailService]
+  providers: [AuthService, SessionService, WebauthnService, OtpService, TurnstileService, EmailService],
+  exports: [SessionService, AuthService]
 })
 export class AuthModule {}
