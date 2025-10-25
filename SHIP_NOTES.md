@@ -24,7 +24,12 @@ Document key decisions, external references, and verification evidence per phase
 
 ## Phase 2 – Token & Scan Flows
 
-- _Pending_
+- Added `TokenSigningKey` table with status lifecycle and Prisma ledger columns for scan tokens (idempotency key, attendance linkage).
+- Implemented Nest token services: Ed25519 signer with JWKS endpoint and member token issuance API guarded by sessions.
+- Added scan processing service/controller enforcing ±90s skew, event window, pass status, and idempotent check-in/out transitions.
+- Created Jest coverage for signer, token issuance, and scan flows (including idempotent retries and checkout path) running against Postgres/Redis in Docker.
+- React PWA now exposes member QR pages with auto-rotating tokens and a steward camera scanner with ZXing + idempotent submissions.
+- API helper supports custom headers for scans; Vitest coverage asserts navigation to new member/steward routes.
 
 ## Phase 3 – Steward Offline & Sync
 

@@ -5,6 +5,8 @@ import { AppService } from './app.service.js';
 import { validateEnv } from './config/env.validation.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { AuthModule } from './auth/auth.module.js';
+import { TokensModule } from './tokens/tokens.module.js';
+import { ScanModule } from './scan/scan.module.js';
 
 @Module({
   imports: [
@@ -15,7 +17,9 @@ import { AuthModule } from './auth/auth.module.js';
       validate: validateEnv
     }),
     PrismaModule,
-    AuthModule
+    AuthModule,
+    TokensModule,
+    ScanModule
   ],
   controllers: [AppController],
   providers: [AppService]
