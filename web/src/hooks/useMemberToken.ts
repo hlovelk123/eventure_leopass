@@ -21,6 +21,7 @@ function computeRefreshDelay(expiresAt: Date, now = new Date()): number {
 export function useMemberToken(eventId: string | null) {
   const [state, setState] = useState<MemberTokenState>({ status: 'idle', token: null, expiresAt: null });
   const refreshTimer = useRef<number | undefined>(undefined);
+  const [lastError, setLastError] = useState<string | null>(null);
 
   const clearRefreshTimer = useCallback(() => {
     if (refreshTimer.current !== undefined) {
@@ -41,6 +42,7 @@ export function useMemberToken(eventId: string | null) {
       const response = await getJson<TokenResponse>(`/member/events/${eventId}/token`);
       const expiresAt = new Date(response.expiresAt);
       setState({ status: 'ready', token: response.token, expiresAt });
+      setLastError(null);
 
       clearRefreshTimer();
       refreshTimer.current = window.setTimeout(() => {
@@ -48,7 +50,13 @@ export function useMemberToken(eventId: string | null) {
       }, computeRefreshDelay(expiresAt));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to fetch token';
-      setState({ status: 'error', token: null, expiresAt: null, error: message });
+      setLastError(message);
+      setState((prev) => {
+        if (prev.status === 'ready') {
+          return prev;
+        }
+        return { status: 'error', token: null, expiresAt: null, error: message };
+      });
       clearRefreshTimer();
     }
   }, [eventId, clearRefreshTimer]);
@@ -70,11 +78,11 @@ export function useMemberToken(eventId: string | null) {
       state,
       refresh,
       isLoading: state.status === 'loading',
-      error: state.status === 'error' ? state.error : null,
+      error: state.status === 'error' ? state.error : lastError,
       token: state.status === 'ready' ? state.token : null,
       expiresAt: state.status === 'ready' ? state.expiresAt : null
     }),
-    [state, refresh]
+    [state, refresh, lastError]
   );
 
   return memoized;

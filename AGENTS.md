@@ -3,7 +3,7 @@
 ## Project Structure & Module Organization
 
 - `api/`: NestJS backend (auth, Prisma, BullMQ, config). Tests live in `api/src/**/__tests__`.
-- `web/`: React/Vite PWA with Tailwind + shadcn/ui. Routes under `web/src/routes`, components in `web/src/components`.
+- `web/`: React/Vite PWA with Tailwind + shadcn/ui. Routes under `web/src/routes`, components in `web/src/components`. Workbox-powered service worker and offline helpers live in `web/src/hooks`/`web/src/lib`.
 - `prisma/`: Database schema, migrations (`prisma/migrations/*`), and seed helpers.
 - `docs/`: Operational guides (`docs/runbooks/`), security notes, and release artifacts.
 - Root tooling includes shared ESLint/Prettier config, Docker Compose, and CI workflows in `.github/workflows/`.
@@ -13,7 +13,7 @@
 - `npm install` / `npm ci`: install all workspaces.
 - `npm run dev --workspace @eventure-leopass/web`: start the PWA at http://localhost:5173.
 - `npm run start:dev --workspace @eventure-leopass/api`: run NestJS API with live reload.
-- `npm run build`: builds API (Nest) and web (Vite) bundles.
+- `npm run build`: builds API (Nest) and web (Vite) bundles (generates PWA service worker).
 - `npm run lint` / `npm run lint --workspace <pkg>`: run ESLint flat config.
 - `npm run test --workspace @eventure-leopass/api`: Jest unit/integration suite (requires Postgres and Redis).
 - `npm run test --workspace @eventure-leopass/web`: Vitest component/unit suite.
@@ -45,3 +45,9 @@
 - Never commit secrets. Populate env vars via `.env` copied from `.env.example`.
 - Turnstile keys (`CF_TURNSTILE_*`) and signing keys must be present in CI/CD secrets before deploys.
 - All database writes should go through `prisma.runWithClaims` to satisfy Row-Level Security policies.
+
+## Offline & Sync Notes
+
+- JWKS are cached client-side; the steward scanner auto-refreshes keys every 6h (`web/src/lib/jwks.ts`). Trigger a manual refresh via the UI if keys are stale.
+- Steward scans queue to IndexedDB when offline. Queue limit is 500 entries with a 48h freshness window—sync before exceeding the cap (`useScanQueue`).
+- The PWA registers a service worker during boot (`virtual:pwa-register`); run `npm run build` before testing install prompts or offline behaviour.

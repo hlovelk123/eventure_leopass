@@ -86,6 +86,9 @@ All requests that mutate auth state must include the Turnstile token (see `Turns
 - Vite is configured with Tailwind + shadcn/ui utility classes.
 - Turnstile site key is read from `VITE_CF_TURNSTILE_SITE_KEY`.
 - Passkeys require a secure origin when deployed; during local dev Vite serves over HTTP with platform authenticator support (Chrome/Edge recommended).
+- The PWA registers a Workbox service worker (`vite-plugin-pwa`) for asset caching and JWKS refresh; build before testing install/offline flows.
+- Steward scanner (`/steward/scan`) validates tokens locally, queues scans in IndexedDB (≤500 entries, 48h TTL), and syncs automatically when back online.
+- Member QR tokens live at `/member/events/:eventId/token`; rotating codes refresh every 30 seconds with manual refresh fallback.
 - Member QR tokens available at `/member` → `/member/events/:eventId/token`; steward camera scanner lives at `/steward/scan` powered by ZXing.
 
 ## Tooling & CI

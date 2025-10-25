@@ -33,7 +33,10 @@ Document key decisions, external references, and verification evidence per phase
 
 ## Phase 3 – Steward Offline & Sync
 
-- _Pending_
+- Added Workbox-powered PWA setup (vite-plugin-pwa) caching static assets and JWKS with 6h refresh cadence.
+- Steward scanner performs local Ed25519 verification using cached JWKS and queues scans to IndexedDB (≤500 entries, 48h TTL) when offline.
+- IndexedDB queue auto-syncs when connectivity returns; UI surfaces offline badge, queued counts, and manual sync triggers.
+- Service worker + hooks instrument offline banners and member QR routes to surface rotating tokens even with transient network loss.
 
 ## Phase 4 – Member/Steward/Admin UX
 
