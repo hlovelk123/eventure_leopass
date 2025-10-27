@@ -68,7 +68,10 @@ Document key decisions, external references, and verification evidence per phase
 
 ## Phase 8 – E2E, A11y, Performance
 
-- _Pending_
+- Expanded Playwright coverage with member dashboard and admin reporting suites using mocked API routes and automated axe-core accessibility scans (`tests/e2e/*.spec.ts`).
+- Added `@axe-core/playwright` dependency and ensured tests intercept backend calls for deterministic CI runs.
+- Created `scripts/check-bundle.mjs` + `npm run verify:perf` to assert the main PWA bundle stays under the 300 KB gzipped budget post-build.
+- Documented perf/a11y verification steps in README quality checks; Playwright artifacts remain configured via `playwright.config.ts`.
 
 ## Phase 9 – Release
 

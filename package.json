@@ -17,6 +17,7 @@
     "test": "npm run test --workspaces --if-present",
     "test:watch": "npm run test:watch --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
+    "verify:perf": "node scripts/check-bundle.mjs",
     "format": "npm run format --workspaces --if-present",
     "prepare": "husky install",
     "dev:api": "npm run start:dev --workspace api",
@@ -26,6 +27,7 @@
     "e2e:ui": "playwright test --ui"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.0",
     "@playwright/test": "^1.47.1",
     "eslint-plugin-react": "^7.35.2",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",

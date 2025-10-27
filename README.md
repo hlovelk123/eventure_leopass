@@ -67,6 +67,7 @@ This starts Postgres, Redis, API (NestJS in watch mode), and Web (Vite dev serve
 npm run lint       # ESLint (API + Web)
 npm run test       # Jest (API) + Vitest (Web)
 npm run build      # tsc + Vite + Nest build
+npm run verify:perf # Ensure main bundle <=300 KB gz (runs after build)
 ```
 
 Playwright smoke tests (browsers must be installed once):

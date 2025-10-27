@@ -294,7 +294,7 @@ export function MemberDashboardPage(): JSX.Element {
   const emailToggleDisabled = updatingPreferences || preferencesLoading;
 
   return (
-    <div className="mx-auto flex min-h-[70vh] max-w-5xl flex-col gap-6 px-4 py-10">
+    <main className="mx-auto flex min-h-[70vh] max-w-5xl flex-col gap-6 px-4 py-10" role="main">
       <header className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
@@ -327,7 +327,7 @@ export function MemberDashboardPage(): JSX.Element {
                     <li key={event.id} className="rounded-xl border border-slate-200 p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="text-sm uppercase tracking-wide text-slate-400">{event.status}</p>
+                          <p className="text-sm uppercase tracking-wide text-slate-500">{event.status}</p>
                           <h3 className="text-lg font-semibold text-slate-800">{event.name}</h3>
                           <p className="text-sm text-slate-500">
                             {formatTime(event.startTime)} – {formatTime(event.endTime)}
@@ -383,7 +383,7 @@ export function MemberDashboardPage(): JSX.Element {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold text-slate-800">Notifications</h2>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-600">
                   {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}
                 </p>
               </div>
@@ -391,7 +391,7 @@ export function MemberDashboardPage(): JSX.Element {
                 type="button"
                 onClick={() => void handleMarkAllRead()}
                 disabled={markingNotifications || notifications.length === 0}
-                className="rounded-md border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-400"
+                className="rounded-md border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-500"
               >
                 Mark all read
               </button>
@@ -400,7 +400,7 @@ export function MemberDashboardPage(): JSX.Element {
               <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{preferencesError}</p>
             )}
             {notifications.length === 0 ? (
-              <p className="mt-3 text-sm text-slate-500">You’re all caught up.</p>
+              <p className="mt-3 text-sm text-slate-600">You’re all caught up.</p>
             ) : (
               <ul className="mt-4 space-y-3">
                 {notifications.map((note) => (
@@ -413,13 +413,13 @@ export function MemberDashboardPage(): JSX.Element {
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
                         <h3 className="text-sm font-semibold text-slate-800">{note.title}</h3>
-                        <p className="text-xs uppercase tracking-wide text-slate-400">
+                        <p className="text-xs uppercase tracking-wide text-slate-700">
                           {formatCategoryLabel(note.category)}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
                         {!note.readAt && <span className="rounded-full bg-brand px-2 py-0.5 text-[10px] font-semibold uppercase text-white">New</span>}
-                        <span className="text-xs text-slate-400">{formatDateTime(note.createdAt)}</span>
+                        <span className="text-xs text-slate-700">{formatDateTime(note.createdAt)}</span>
                       </div>
                     </div>
                     <p className="mt-2 text-sm text-slate-600">{note.body}</p>
@@ -434,7 +434,7 @@ export function MemberDashboardPage(): JSX.Element {
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <p className="text-sm font-medium text-slate-700">Push notifications</p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-slate-600">
                         {pushSupported
                           ? pushPermission === 'granted'
                             ? 'Get steward updates and reminders on this device.'
@@ -448,7 +448,7 @@ export function MemberDashboardPage(): JSX.Element {
                       disabled={pushButtonDisabled || !pushSupported}
                       className={`rounded-md px-3 py-2 text-sm font-medium ${
                         preferences?.pushEnabled
-                          ? 'border border-red-200 text-red-600 hover:bg-red-50 disabled:border-slate-200 disabled:text-slate-400'
+                          ? 'border border-red-200 text-red-600 hover:bg-red-50 disabled:border-slate-200 disabled:text-slate-500'
                           : 'bg-brand text-white hover:bg-brand/90 disabled:bg-slate-300'
                       }`}
                     >
@@ -538,6 +538,6 @@ export function MemberDashboardPage(): JSX.Element {
           </button>
         </form>
       </section>
-    </div>
+    </main>
   );
 }

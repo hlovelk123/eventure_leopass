@@ -291,11 +291,11 @@ export function AdminDashboardPage(): JSX.Element {
   };
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10">
+    <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10" role="main">
       <header className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs uppercase tracking-wide text-slate-400">Admin console</p>
+            <p className="text-xs uppercase tracking-wide text-slate-500">Admin console</p>
             <h1 className="text-3xl font-semibold text-brand">Events &amp; attendance</h1>
           </div>
           <span
@@ -318,19 +318,19 @@ export function AdminDashboardPage(): JSX.Element {
       {!loading && dashboard && (
         <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <article className="rounded-2xl bg-white p-5 shadow">
-            <h2 className="text-xs uppercase tracking-wide text-slate-400">Active members</h2>
+            <h2 className="text-xs uppercase tracking-wide text-slate-500">Active members</h2>
             <p className="mt-2 text-3xl font-semibold text-slate-900">{dashboard.totals.activeMembers}</p>
           </article>
           <article className="rounded-2xl bg-white p-5 shadow">
-            <h2 className="text-xs uppercase tracking-wide text-slate-400">Invited members</h2>
+            <h2 className="text-xs uppercase tracking-wide text-slate-500">Invited members</h2>
             <p className="mt-2 text-3xl font-semibold text-slate-900">{dashboard.totals.invitedMembers}</p>
           </article>
           <article className="rounded-2xl bg-white p-5 shadow">
-            <h2 className="text-xs uppercase tracking-wide text-slate-400">Active sessions</h2>
+            <h2 className="text-xs uppercase tracking-wide text-slate-500">Active sessions</h2>
             <p className="mt-2 text-3xl font-semibold text-slate-900">{dashboard.totals.activeSessions}</p>
           </article>
           <article className="rounded-2xl bg-white p-5 shadow">
-            <h2 className="text-xs uppercase tracking-wide text-slate-400">Upcoming events</h2>
+            <h2 className="text-xs uppercase tracking-wide text-slate-500">Upcoming events</h2>
             <p className="mt-2 text-3xl font-semibold text-slate-900">{dashboard.totals.upcomingEvents}</p>
           </article>
         </section>
@@ -351,7 +351,7 @@ export function AdminDashboardPage(): JSX.Element {
                   <li key={event.id} className="rounded-2xl border border-slate-200 p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
-                        <p className="text-xs uppercase tracking-wide text-slate-400">{event.status}</p>
+                        <p className="text-xs uppercase tracking-wide text-slate-500">{event.status}</p>
                         <h3 className="text-lg font-semibold text-slate-800">{event.name}</h3>
                         <p className="text-sm text-slate-500">{formatDateTime(event.startTime)}</p>
                       </div>
@@ -597,7 +597,7 @@ export function AdminDashboardPage(): JSX.Element {
                   type="button"
                   onClick={downloadReportCsv}
                   disabled={!reportEventId || reportLoading}
-                  className="rounded-md border border-brand px-4 py-2 text-sm font-medium text-brand hover:bg-brand/10 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
+                  className="rounded-md border border-brand px-4 py-2 text-sm font-medium text-brand hover:bg-brand/10 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-500"
                 >
                   Download CSV
                 </button>
@@ -705,21 +705,21 @@ export function AdminDashboardPage(): JSX.Element {
                 <div>
                   <h3 className="text-sm font-semibold text-slate-700">Recent attendees</h3>
                   {report.attendees.length === 0 ? (
-                    <p className="mt-2 text-sm text-slate-500">No attendance recorded yet.</p>
+                    <p className="mt-2 text-sm text-slate-600">No attendance recorded yet.</p>
                   ) : (
                     <ul className="mt-2 grid gap-2 md:grid-cols-2">
                       {report.attendees.slice(0, 6).map((attendee) => (
-                        <li key={attendee.id} className="rounded-xl border border-slate-100 p-3 text-sm text-slate-600">
+                        <li key={attendee.id} className="rounded-xl border border-slate-100 p-3 text-sm text-slate-700">
                           <p className="font-medium text-slate-800">
                             {attendee.name} ·{' '}
-                            <span className="text-xs uppercase tracking-wide text-slate-400">
+                            <span className="text-xs uppercase tracking-wide text-slate-500">
                               {attendee.categoryLabel}
                             </span>
                           </p>
-                          <p className="text-xs text-slate-500">
+                          <p className="text-xs text-slate-600">
                             {formatColombo(attendee.checkIn)} → {formatColombo(attendee.checkOut)}
                           </p>
-                          <p className="text-xs text-slate-500">
+                          <p className="text-xs text-slate-600">
                             {attendee.isGuest ? 'Invited guest' : 'Member'} ·{' '}
                             {attendee.totalMinutes != null ? `${attendee.totalMinutes} min` : '—'}
                           </p>
@@ -738,7 +738,7 @@ export function AdminDashboardPage(): JSX.Element {
         <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-xl font-semibold text-slate-800">All events</h2>
-            <p className="text-sm text-slate-500">Toggle access modes or export details for steward briefings.</p>
+            <p className="text-sm text-slate-600">Toggle access modes or export details for steward briefings.</p>
           </div>
           <button
             type="button"
@@ -751,7 +751,7 @@ export function AdminDashboardPage(): JSX.Element {
           </button>
         </header>
         {events.length === 0 ? (
-          <p className="text-sm text-slate-500">No events have been created yet.</p>
+          <p className="text-sm text-slate-600">No events have been created yet.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
@@ -769,11 +769,11 @@ export function AdminDashboardPage(): JSX.Element {
                   <tr key={event.id}>
                     <td className="px-3 py-3">
                       <p className="font-medium text-slate-800">{event.name}</p>
-                      <p className="text-xs text-slate-400">{event.id}</p>
+                      <p className="text-xs text-slate-600">{event.id}</p>
                     </td>
                     <td className="px-3 py-3 text-sm">
-                      <span className="block">{formatDateTime(event.startTime)}</span>
-                      <span className="block text-xs text-slate-400">→ {formatDateTime(event.endTime)}</span>
+                      <span className="block text-slate-700">{formatDateTime(event.startTime)}</span>
+                      <span className="block text-xs text-slate-600">→ {formatDateTime(event.endTime)}</span>
                     </td>
                     <td className="px-3 py-3">
                       <div className="space-y-1 text-xs">
@@ -811,6 +811,6 @@ export function AdminDashboardPage(): JSX.Element {
           </div>
         )}
       </section>
-    </div>
+    </main>
   );
 }
