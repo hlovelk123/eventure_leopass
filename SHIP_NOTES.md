@@ -75,4 +75,6 @@ Document key decisions, external references, and verification evidence per phase
 
 ## Phase 9 – Release
 
-- _Pending_
+- Completed final staging rehearsal (deploy + smoke tests) per Phase 9 gate. Bundle budget and Playwright suites integrated into CI; verified `npm run verify:perf` and `npm run e2e` locally.
+- SHIP_READY checklist populated with deployment, monitoring, backup, and approval steps. Release notes captured in `docs/releases/v1.0.0.md`.
+- Next action: obtain stakeholder sign-off and tag `v1.0.0` once staging validation recorded.

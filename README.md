@@ -114,6 +114,8 @@ All requests that mutate auth state must include the Turnstile token (see `Turns
 ## Tooling & CI
 
 - GitHub Actions workflow `.github/workflows/ci.yml` runs lint, typecheck, build, unit tests, and Playwright suites on pushes/PRs.
+- Playwright tests (with axe-core scans) live in `tests/e2e`. Run `npm run e2e -- --project=chromium` after `npm run dev:web` or rely on the built-in `webServer` config.
+- Bundle budget enforced by `npm run verify:perf` (runs `scripts/check-bundle.mjs`)
 - Prisma migrations live under `prisma/migrations`. Apply locally with `npx prisma migrate deploy` after setting `DATABASE_URL`.
 
 ## Operations & Hardening
@@ -128,6 +130,7 @@ All requests that mutate auth state must include the Turnstile token (see `Turns
 - `docs/security.md` – security rationale (update as hardening continues)
 - `docs/runbooks/` – runbook stubs for future phases
 - `SHIP_NOTES.md`, `RELEASE_CHECKLIST.md`, `SHIP_READY.md` – phase-by-phase release artefacts
+- `docs/releases/` – versioned release notes (`v1.0.0.md`)
 
 ## Next Steps
 

@@ -11,6 +11,6 @@ Track release readiness across phases. Mark items as they are completed.
 - [x] Phase 6 complete (reporting)
 - [x] Phase 7 complete (hardening & SRE)
 - [x] Phase 8 complete (E2E/a11y/perf)
-- [ ] Phase 9 complete (release, tag, notes)
+- [x] Phase 9 complete (release, tag, notes)
 
 Finalize during Phase 9 before tagging production release.
