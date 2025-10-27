@@ -1,6 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { addMinutes } from 'date-fns';
-import { NotificationCategory, RoleAssignment, RoleLevel } from '@prisma/client';
+import { NotificationCategory, ReportCategory, RoleAssignment, RoleLevel } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { EventsService } from '../events.service.js';
 import { SessionUser } from '../../auth/services/session.service.js';
@@ -247,5 +247,125 @@ describe('EventsService', () => {
       type: 'Guest'
     });
     expect(walkIn.guest.name).toBe('Guest Example');
+  });
+
+  it('generates ordered event report and CSV export', async () => {
+    const start = addMinutes(new Date(), -120);
+    const end = addMinutes(start, 180);
+
+    const club = await prisma.runWithClaims({ roles: ['system'] }, (tx) =>
+      tx.club.create({
+        data: {
+          name: `Report Club ${Date.now()}`
+        }
+      })
+    );
+
+    const admin = await prisma.runWithClaims({ roles: ['system'] }, (tx) =>
+      tx.user.create({
+        data: {
+          email: `report-admin-${Date.now()}@example.com`,
+          displayName: 'Report Admin',
+          status: 'ACTIVE',
+          roleAssignments: {
+            create: {
+              level: RoleLevel.CLUB,
+              roleTitle: 'Club Admin',
+              clubId: club.id,
+              startTs: new Date(),
+              active: true
+            }
+          }
+        },
+        include: {
+          roleAssignments: true
+        }
+      })
+    );
+
+    const event = await prisma.runWithClaims({ roles: ['system'] }, (tx) =>
+      tx.event.create({
+        data: {
+          name: `Reporting Event ${Date.now()}`,
+          startTime: start,
+          endTime: end,
+          status: 'ACTIVE',
+          mode: 'NO_RSVP',
+          hostClubId: club.id,
+          allowWalkIns: true
+        }
+      })
+    );
+
+    const guest = await prisma.runWithClaims({ roles: ['system'] }, (tx) =>
+      tx.invitedGuestEventAttendee.create({
+        data: {
+          eventId: event.id,
+          name: 'VIP Guest',
+          email: 'vip@example.com',
+          type: 'VIP',
+          createdByStewardId: admin.id,
+          checkInTime: addMinutes(start, 15),
+          checkOutTime: addMinutes(start, 75),
+          method: 'MANUAL'
+        }
+      })
+    );
+
+    await prisma.runWithClaims({ roles: ['system'] }, (tx) =>
+      tx.attendanceSession.create({
+        data: {
+          eventId: event.id,
+          invitedGuestId: guest.id,
+          checkInTs: guest.checkInTime,
+          checkOutTs: guest.checkOutTime,
+          method: 'MANUAL',
+          reportCategory: ReportCategory.INVITED_GUESTS
+        }
+      })
+    );
+
+    const member = await prisma.runWithClaims({ roles: ['system'] }, (tx) =>
+      tx.user.create({
+        data: {
+          email: `report-member-${Date.now()}@example.com`,
+          displayName: 'Report Member',
+          status: 'ACTIVE',
+          primaryClubId: club.id
+        },
+        include: {
+          roleAssignments: true
+        }
+      })
+    );
+
+    await prisma.runWithClaims({ roles: ['system'] }, (tx) =>
+      tx.attendanceSession.create({
+        data: {
+          eventId: event.id,
+          userId: member.id,
+          checkInTs: addMinutes(start, 45),
+          checkOutTs: addMinutes(start, 120),
+          method: 'STEWARD',
+          reportCategory: ReportCategory.CLUB_MEMBERS
+        }
+      })
+    );
+
+    const report = await service.getEventReport(toSessionUser(admin), event.id);
+    expect(report.totals.totalAttendees).toBe(2);
+    expect(report.categories[0]?.category).toBe(ReportCategory.INVITED_GUESTS);
+    expect(report.categories[0]?.attendeeCount).toBe(1);
+    const clubMembersSummary = report.categories.find(
+      (category) => category.category === ReportCategory.CLUB_MEMBERS
+    );
+    expect(clubMembersSummary?.attendeeCount).toBe(1);
+    expect(report.attendees[0]?.category).toBe(ReportCategory.INVITED_GUESTS);
+    expect(report.attendees[1]?.category).toBe(ReportCategory.CLUB_MEMBERS);
+
+    const { csv } = await service.exportEventReportCsv(toSessionUser(admin), event.id);
+    const csvLines = csv.split('\n');
+    expect(csvLines[1]).toContain('Invited Guests');
+    expect(csvLines[2]).toContain('Club Members');
   });
 });

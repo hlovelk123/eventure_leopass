@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { AttendanceMethod, Event, EventMode, MemberEventPassStatus, Prisma, ReportCategory, NotificationCategory } from '@prisma/client';
-import { addMinutes, endOfDay, isBefore, isWithinInterval, startOfDay } from 'date-fns';
+import { AttendanceMethod, Event, EventMode, EventStatus, MemberEventPassStatus, Prisma, ReportCategory, NotificationCategory } from '@prisma/client';
+import { addMinutes, differenceInMinutes, endOfDay, isBefore, isWithinInterval, startOfDay } from 'date-fns';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { SessionUser } from '../auth/services/session.service.js';
 import {
@@ -94,6 +94,84 @@ export type AdminDashboard = {
   };
   upcoming: AdminEventItem[];
   pendingInvites: { id: string; email: string; displayName: string }[];
+};
+
+const REPORT_CATEGORY_ORDER: ReportCategory[] = [
+  ReportCategory.INVITED_GUESTS,
+  ReportCategory.LIONS,
+  ReportCategory.MULTIPLE_COUNCIL_OFFICERS,
+  ReportCategory.DISTRICT_COUNCIL_OFFICERS,
+  ReportCategory.CLUB_EXECUTIVE_OFFICERS,
+  ReportCategory.CLUB_MEMBERS,
+  ReportCategory.VISITING_LEOS,
+  ReportCategory.OUTSIDERS
+];
+
+const REPORT_CATEGORY_LABELS: Record<ReportCategory, string> = {
+  [ReportCategory.INVITED_GUESTS]: 'Invited Guests',
+  [ReportCategory.LIONS]: 'Lions',
+  [ReportCategory.MULTIPLE_COUNCIL_OFFICERS]: 'Multiple Council Officers',
+  [ReportCategory.DISTRICT_COUNCIL_OFFICERS]: 'District Council Officers',
+  [ReportCategory.CLUB_EXECUTIVE_OFFICERS]: 'Club Executive Officers',
+  [ReportCategory.CLUB_MEMBERS]: 'Club Members',
+  [ReportCategory.VISITING_LEOS]: 'Visiting Leos',
+  [ReportCategory.OUTSIDERS]: 'Outsiders'
+};
+
+const COLOMBO_TIMEZONE = 'Asia/Colombo';
+
+export type EventReportCategorySummary = {
+  category: ReportCategory;
+  label: string;
+  attendeeCount: number;
+  guestCount: number;
+};
+
+export type EventReportTimeline = {
+  scheduledStart: Date;
+  scheduledEnd: Date;
+  actualStart: Date | null;
+  actualEnd: Date | null;
+  scheduledDurationMinutes: number;
+  actualDurationMinutes: number | null;
+  overrunMinutes: number | null;
+};
+
+export type EventReportAttendee = {
+  id: string;
+  isGuest: boolean;
+  name: string;
+  email: string | null;
+  guestType: string | null;
+  clubName: string | null;
+  districtName: string | null;
+  category: ReportCategory;
+  categoryLabel: string;
+  checkIn: Date | null;
+  checkOut: Date | null;
+  totalMinutes: number | null;
+  method: AttendanceMethod;
+  notes: string | null;
+};
+
+export type EventReport = {
+  event: {
+    id: string;
+    name: string;
+    status: EventStatus;
+    mode: EventMode;
+    allowWalkIns: boolean;
+    hostClubs: { id: string; name: string }[];
+  };
+  timeline: EventReportTimeline;
+  totals: {
+    totalAttendees: number;
+    guestCount: number;
+    manualCount: number;
+    stillCheckedInCount: number;
+  };
+  categories: EventReportCategorySummary[];
+  attendees: EventReportAttendee[];
 };
 
 @Injectable()
@@ -779,5 +857,308 @@ export class EventsService {
         pendingInvites
       };
     });
+  }
+
+  async getEventReport(user: SessionUser, eventId: string): Promise<EventReport> {
+    const report = await this.buildEventReport(user, eventId);
+    return report;
+  }
+
+  async exportEventReportCsv(user: SessionUser, eventId: string): Promise<{ filename: string; csv: string }> {
+    const report = await this.buildEventReport(user, eventId);
+    const hostClubLabel = report.event.hostClubs.map((club) => club.name).join(' | ');
+
+    const header = [
+      'Category',
+      'Name',
+      'Email',
+      'Is Invited Guest',
+      'Guest Type',
+      'Club',
+      'District',
+      'Check In (Asia/Colombo)',
+      'Check Out (Asia/Colombo)',
+      'Total Minutes',
+      'Method',
+      'Notes',
+      'Host Clubs'
+    ];
+
+    const rows = report.attendees.map((attendee) => [
+      attendee.categoryLabel,
+      attendee.name,
+      attendee.email ?? '',
+      attendee.isGuest ? 'Yes' : 'No',
+      attendee.guestType ?? '',
+      attendee.clubName ?? '',
+      attendee.districtName ?? '',
+      this.formatAsColombo(attendee.checkIn),
+      this.formatAsColombo(attendee.checkOut),
+      attendee.totalMinutes != null ? attendee.totalMinutes.toString() : '',
+      this.humanizeMethod(attendee.method),
+      attendee.notes ?? '',
+      hostClubLabel
+    ]);
+
+    const csv = this.buildCsv([header, ...rows]);
+    const filename = `${this.slugify(report.event.name)}-${eventId}.csv`;
+    return { filename, csv };
+  }
+
+  private async buildEventReport(user: SessionUser, eventId: string): Promise<EventReport> {
+    const scope = resolveRoleScope(user.roleAssignments);
+    ensureAdminAccess(scope);
+    const claims = buildClaims(user.id, scope, ['admin']);
+    const where = resolveEventWhereClause(scope);
+
+    return this.prisma.runWithClaims(claims, async (tx) => {
+      const event = await tx.event.findFirst({
+        where: {
+          id: eventId,
+          ...where
+        },
+        include: {
+          hostClub: {
+            select: {
+              id: true,
+              name: true
+            }
+          },
+          hostClubs: {
+            include: {
+              club: {
+                select: {
+                  id: true,
+                  name: true
+                }
+              }
+            }
+          }
+        }
+      });
+
+      if (!event) {
+        throw new NotFoundException('Event not found');
+      }
+
+      const sessions = await tx.attendanceSession.findMany({
+        where: { eventId: event.id },
+        include: {
+          user: {
+            select: {
+              id: true,
+              displayName: true,
+              email: true,
+              primaryClub: {
+                select: {
+                  id: true,
+                  name: true,
+                  district: {
+                    select: {
+                      id: true,
+                      name: true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          invitedGuest: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              type: true,
+              notes: true
+            }
+          }
+        }
+      });
+
+      const hostClubRecords = new Map<string, { id: string; name: string }>();
+      if (event.hostClub) {
+        hostClubRecords.set(event.hostClub.id, { id: event.hostClub.id, name: event.hostClub.name });
+      }
+      for (const pivot of event.hostClubs) {
+        hostClubRecords.set(pivot.clubId, { id: pivot.clubId, name: pivot.club.name });
+      }
+      const hostClubs = Array.from(hostClubRecords.values());
+
+      const checkInTimes = sessions
+        .map((session) => session.checkInTs)
+        .filter((value): value is Date => value instanceof Date);
+      const rawCheckOutTimes = sessions
+        .map((session) => session.checkOutTs ?? session.checkInTs)
+        .filter((value): value is Date => value instanceof Date);
+
+      const actualStart = checkInTimes.length ? new Date(Math.min(...checkInTimes.map((date) => date.getTime()))) : null;
+      const actualEnd = rawCheckOutTimes.length ? new Date(Math.max(...rawCheckOutTimes.map((date) => date.getTime()))) : null;
+
+      const scheduledDurationMinutes = Math.max(
+        0,
+        differenceInMinutes(event.endTime, event.startTime)
+      );
+      const actualDurationMinutes =
+        actualStart && actualEnd ? Math.max(0, differenceInMinutes(actualEnd, actualStart)) : null;
+      const overrunMinutes =
+        actualDurationMinutes != null ? actualDurationMinutes - scheduledDurationMinutes : null;
+
+      const categorySummaries = new Map<ReportCategory, EventReportCategorySummary>();
+      for (const category of REPORT_CATEGORY_ORDER) {
+        categorySummaries.set(category, {
+          category,
+          label: REPORT_CATEGORY_LABELS[category],
+          attendeeCount: 0,
+          guestCount: 0
+        });
+      }
+
+      const attendees: EventReportAttendee[] = sessions.map((session) => {
+        const isGuest = Boolean(session.invitedGuestId);
+        const name = isGuest
+          ? session.invitedGuest?.name ?? 'Guest'
+          : session.user?.displayName ?? 'Member';
+        const email = isGuest ? session.invitedGuest?.email ?? null : session.user?.email ?? null;
+        const guestType = isGuest ? session.invitedGuest?.type ?? null : null;
+        const clubName = session.user?.primaryClub?.name ?? null;
+        const districtName = session.user?.primaryClub?.district?.name ?? null;
+        const category = session.reportCategory;
+        const categoryLabel = REPORT_CATEGORY_LABELS[category];
+        const totalMinutes =
+          session.checkInTs != null
+            ? Math.max(
+                0,
+                differenceInMinutes(
+                  session.checkOutTs ?? actualEnd ?? event.endTime,
+                  session.checkInTs
+                )
+              )
+            : null;
+        const notes = isGuest ? session.invitedGuest?.notes ?? null : null;
+
+        const summary = categorySummaries.get(category);
+        if (summary) {
+          summary.attendeeCount += 1;
+          if (isGuest) {
+            summary.guestCount += 1;
+          }
+        }
+
+        return {
+          id: session.id,
+          isGuest,
+          name,
+          email,
+          guestType,
+          clubName,
+          districtName,
+          category,
+          categoryLabel,
+          checkIn: session.checkInTs ?? null,
+          checkOut: session.checkOutTs ?? null,
+          totalMinutes,
+          method: session.method,
+          notes
+        };
+      });
+
+      attendees.sort((a, b) => {
+        const categoryDiff =
+          REPORT_CATEGORY_ORDER.indexOf(a.category) - REPORT_CATEGORY_ORDER.indexOf(b.category);
+        if (categoryDiff !== 0) {
+          return categoryDiff;
+        }
+        if (a.checkIn && b.checkIn) {
+          return a.checkIn.getTime() - b.checkIn.getTime();
+        }
+        if (a.checkIn && !b.checkIn) {
+          return -1;
+        }
+        if (!a.checkIn && b.checkIn) {
+          return 1;
+        }
+        return a.name.localeCompare(b.name);
+      });
+
+      const totals = {
+        totalAttendees: attendees.length,
+        guestCount: attendees.filter((attendee) => attendee.isGuest).length,
+        manualCount: attendees.filter((attendee) => attendee.method === AttendanceMethod.MANUAL).length,
+        stillCheckedInCount: sessions.filter((session) => !session.checkOutTs).length
+      };
+
+      const timeline: EventReportTimeline = {
+        scheduledStart: event.startTime,
+        scheduledEnd: event.endTime,
+        actualStart,
+        actualEnd,
+        scheduledDurationMinutes,
+        actualDurationMinutes,
+        overrunMinutes
+      };
+
+      const report: EventReport = {
+        event: {
+          id: event.id,
+          name: event.name,
+          status: event.status,
+          mode: event.mode,
+          allowWalkIns: event.allowWalkIns,
+          hostClubs
+        },
+        timeline,
+        totals,
+        categories: REPORT_CATEGORY_ORDER.map((category) => {
+          const summary = categorySummaries.get(category)!;
+          return summary;
+        }),
+        attendees
+      };
+
+      return report;
+    });
+  }
+
+  private formatAsColombo(value: Date | null): string {
+    if (!value) {
+      return '';
+    }
+    return new Intl.DateTimeFormat('en-LK', {
+      timeZone: COLOMBO_TIMEZONE,
+      dateStyle: 'medium',
+      timeStyle: 'short'
+    }).format(value);
+  }
+
+  private buildCsv(rows: string[][]): string {
+    return rows
+      .map((row) => row.map((value) => this.escapeCsvValue(value)).join(','))
+      .join('\n');
+  }
+
+  private escapeCsvValue(value: string): string {
+    if (value.includes('"') || value.includes(',') || value.includes('\n')) {
+      return `"${value.replace(/"/g, '""')}"`;
+    }
+    return value;
+  }
+
+  private humanizeMethod(method: AttendanceMethod): string {
+    switch (method) {
+      case AttendanceMethod.MANUAL:
+        return 'Manual';
+      case AttendanceMethod.STEWARD:
+        return 'Steward';
+      default:
+        return method;
+    }
+  }
+
+  private slugify(value: string): string {
+    return value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 80) || 'event-report';
   }
 }

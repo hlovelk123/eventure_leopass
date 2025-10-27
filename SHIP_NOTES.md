@@ -55,7 +55,9 @@ Document key decisions, external references, and verification evidence per phase
 
 ## Phase 6 – Reporting
 
-- _Pending_
+- Implemented Nest event reporting service returning schedule vs actual timelines, category totals (ordered), and attendee breakdown; added CSV export endpoint emitting Asia/Colombo timestamps with joint-host metadata.
+- Extended admin controller with report/CSV routes and Jest coverage asserting category ordering and export contents.
+- Updated admin dashboard with reporting panel (timeline, totals, category table, recent attendees) and one-click CSV download wired to new API.
 
 ## Phase 7 – Hardening & SRE
 

@@ -18,6 +18,12 @@ Monorepo providing the NestJS API (`api/`) and React/Vite PWA (`web/`) for the L
 - **Member experience** now consumes the real notification feed, supports “mark all read,” and exposes push/email toggles with browser permission prompts and IndexedDB offline fallback messaging.
 - **Tooling**: new Jest coverage for notification service + processor flows, updated events specs/mocks, and `.env.example` now documents `WEB_PUSH_VAPID_*`, `ENABLE_PUSH_NOTIFICATIONS`, and `VITE_WEB_PUSH_VAPID_PUBLIC_KEY`.
 
+## Phase 6 Highlights – Reporting
+
+- **Event reports API** surfaces scheduled vs actual timelines, overrun metrics, host club metadata, and ordered attendance category totals; CSV export runs in Asia/Colombo with member/guest detail.
+- **Admin dashboard** adds a reporting panel with timeline/totals summary, category table, and recent attendee snapshot plus one-click CSV download wired to the new endpoints.
+- **Quality guardrails**: Jest coverage validates reporting order + CSV content while the PWA lint/test suite exercises the refreshed admin UI.
+
 ## Prerequisites
 
 - Node.js 20+

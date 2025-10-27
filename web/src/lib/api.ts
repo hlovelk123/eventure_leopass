@@ -59,3 +59,10 @@ export function deleteJson<TResponse>(path: string, body?: unknown, options: Pos
     headers: options.headers
   });
 }
+
+export function getApiUrl(path: string): string {
+  if (!path.startsWith('/')) {
+    return `${API_BASE}/api/${path}`;
+  }
+  return `${API_BASE}/api${path}`;
+}

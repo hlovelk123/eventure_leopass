@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
-import { getJson, patchJson, postJson } from '../../lib/api';
+import { getApiUrl, getJson, patchJson, postJson } from '../../lib/api';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 
 type AdminEventItem = {
@@ -42,6 +42,55 @@ type ExtendEventForm = {
   reason: string;
 };
 
+type EventReportCategorySummary = {
+  category: string;
+  label: string;
+  attendeeCount: number;
+  guestCount: number;
+};
+
+type EventReport = {
+  event: {
+    id: string;
+    name: string;
+    status: string;
+    mode: string;
+    allowWalkIns: boolean;
+    hostClubs: { id: string; name: string }[];
+  };
+  timeline: {
+    scheduledStart: string;
+    scheduledEnd: string;
+    actualStart: string | null;
+    actualEnd: string | null;
+    scheduledDurationMinutes: number;
+    actualDurationMinutes: number | null;
+    overrunMinutes: number | null;
+  };
+  totals: {
+    totalAttendees: number;
+    guestCount: number;
+    manualCount: number;
+    stillCheckedInCount: number;
+  };
+  categories: EventReportCategorySummary[];
+  attendees: {
+    id: string;
+    name: string;
+    categoryLabel: string;
+    isGuest: boolean;
+    checkIn: string | null;
+    checkOut: string | null;
+    totalMinutes: number | null;
+  }[];
+};
+
+const COLOMBO_FORMATTER = new Intl.DateTimeFormat('en-LK', {
+  timeZone: 'Asia/Colombo',
+  dateStyle: 'medium',
+  timeStyle: 'short'
+});
+
 function formatDateTime(value: string): string {
   return new Date(value).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
 }
@@ -71,11 +120,21 @@ export function AdminDashboardPage(): JSX.Element {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-
+  const [reportEventId, setReportEventId] = useState('');
+  const [report, setReport] = useState<EventReport | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
   const [createForm, setCreateForm] = useState<CreateEventForm>(createDefaults);
   const [extendForm, setExtendForm] = useState<ExtendEventForm>(extendDefaults);
   const [creating, setCreating] = useState(false);
   const [extending, setExtending] = useState(false);
+
+  const formatColombo = useCallback((value: string | null) => {
+    if (!value) {
+      return '—';
+    }
+    return COLOMBO_FORMATTER.format(new Date(value));
+  }, []);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -88,6 +147,17 @@ export function AdminDashboardPage(): JSX.Element {
       setDashboard(dashboardResponse);
       setEvents(eventsResponse);
       setMessage(null);
+      if (eventsResponse.length > 0) {
+        setReportEventId((current) => {
+          if (current && eventsResponse.some((evt) => evt.id === current)) {
+            return current;
+          }
+          return eventsResponse[0].id;
+        });
+      } else {
+        setReportEventId('');
+        setReport(null);
+      }
     } catch (err) {
       const messageText = err instanceof Error ? err.message : 'Failed to load admin data';
       setError(messageText);
@@ -108,6 +178,46 @@ export function AdminDashboardPage(): JSX.Element {
       }));
     }
   }, [events, extendForm.eventId]);
+
+  useEffect(() => {
+    if (!reportEventId) {
+      setReport(null);
+      return;
+    }
+    let active = true;
+    setReportLoading(true);
+    setReportError(null);
+    getJson<EventReport>(`/admin/events/${reportEventId}/report`)
+      .then((response) => {
+        if (!active) {
+          return;
+        }
+        setReport(response);
+      })
+      .catch((err) => {
+        if (!active) {
+          return;
+        }
+        const messageText = err instanceof Error ? err.message : 'Failed to load event report';
+        setReportError(messageText);
+      })
+      .finally(() => {
+        if (active) {
+          setReportLoading(false);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [reportEventId]);
+
+  const downloadReportCsv = useCallback(() => {
+    if (!reportEventId) {
+      return;
+    }
+    const url = getApiUrl(`/admin/events/${reportEventId}/report.csv`);
+    window.open(url, '_blank', 'noopener');
+  }, [reportEventId]);
 
   const selectedExtendEvent = useMemo(
     () => events.find((event) => event.id === extendForm.eventId) ?? null,
@@ -454,6 +564,174 @@ export function AdminDashboardPage(): JSX.Element {
             </button>
           </form>
         </article>
+      </section>
+
+      <section className="space-y-5 rounded-3xl bg-white p-6 shadow">
+        <header className="space-y-1">
+          <h2 className="text-xl font-semibold text-slate-800">Event report</h2>
+          <p className="text-sm text-slate-500">
+            Review attendance breakdowns and download CSV exports in Asia/Colombo timezone.
+          </p>
+        </header>
+        {events.length === 0 ? (
+          <p className="text-sm text-slate-500">Create an event to unlock reporting.</p>
+        ) : (
+          <>
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <label className="flex flex-col text-sm font-medium text-slate-600 md:w-72">
+                Event
+                <select
+                  value={reportEventId}
+                  onChange={(event) => setReportEventId(event.target.value)}
+                  className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 focus:border-brand focus:outline-none"
+                >
+                  {events.map((event) => (
+                    <option key={event.id} value={event.id}>
+                      {event.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={downloadReportCsv}
+                  disabled={!reportEventId || reportLoading}
+                  className="rounded-md border border-brand px-4 py-2 text-sm font-medium text-brand hover:bg-brand/10 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
+                >
+                  Download CSV
+                </button>
+              </div>
+            </div>
+            {reportError && (
+              <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{reportError}</p>
+            )}
+            {reportLoading && (
+              <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500">Loading report…</div>
+            )}
+            {!reportLoading && report && (
+              <div className="space-y-5">
+                <div className="grid gap-4 lg:grid-cols-[2fr,1fr]">
+                  <article className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                    <h3 className="text-sm font-semibold text-slate-700">Timeline</h3>
+                    <dl className="mt-2 grid gap-2 text-sm text-slate-600">
+                      <div className="flex flex-wrap justify-between gap-2">
+                        <dt className="font-medium text-slate-500">Scheduled</dt>
+                        <dd>
+                          {formatColombo(report.timeline.scheduledStart)} →{' '}
+                          {formatColombo(report.timeline.scheduledEnd)}
+                        </dd>
+                      </div>
+                      <div className="flex flex-wrap justify-between gap-2">
+                        <dt className="font-medium text-slate-500">Actual</dt>
+                        <dd>
+                          {formatColombo(report.timeline.actualStart)} →{' '}
+                          {formatColombo(report.timeline.actualEnd)}
+                        </dd>
+                      </div>
+                      <div className="flex flex-wrap justify-between gap-2">
+                        <dt className="font-medium text-slate-500">Duration</dt>
+                        <dd>
+                          Planned {report.timeline.scheduledDurationMinutes} min · Actual{' '}
+                          {report.timeline.actualDurationMinutes ?? '—'} min
+                        </dd>
+                      </div>
+                      <div className="flex flex-wrap justify-between gap-2">
+                        <dt className="font-medium text-slate-500">Overrun</dt>
+                        <dd>
+                          {report.timeline.overrunMinutes === null
+                            ? '—'
+                            : report.timeline.overrunMinutes === 0
+                            ? 'On schedule'
+                            : report.timeline.overrunMinutes > 0
+                            ? `${report.timeline.overrunMinutes} min over`
+                            : `${Math.abs(report.timeline.overrunMinutes)} min under`}
+                        </dd>
+                      </div>
+                      <div className="flex flex-wrap justify-between gap-2">
+                        <dt className="font-medium text-slate-500">Host clubs</dt>
+                        <dd>
+                          {report.event.hostClubs.length === 0
+                            ? '—'
+                            : report.event.hostClubs.map((club) => club.name).join(', ')}
+                        </dd>
+                      </div>
+                    </dl>
+                  </article>
+                  <article className="rounded-2xl border border-slate-100 bg-white p-4">
+                    <h3 className="text-sm font-semibold text-slate-700">Totals</h3>
+                    <ul className="mt-2 space-y-2 text-sm text-slate-600">
+                      <li className="flex justify-between">
+                        <span>Attendees</span>
+                        <span className="font-semibold text-slate-800">{report.totals.totalAttendees}</span>
+                      </li>
+                      <li className="flex justify-between">
+                        <span>Invited guests</span>
+                        <span className="font-semibold text-slate-800">{report.totals.guestCount}</span>
+                      </li>
+                      <li className="flex justify-between">
+                        <span>Manual actions</span>
+                        <span className="font-semibold text-slate-800">{report.totals.manualCount}</span>
+                      </li>
+                      <li className="flex justify-between">
+                        <span>Still checked-in</span>
+                        <span className="font-semibold text-slate-800">{report.totals.stillCheckedInCount}</span>
+                      </li>
+                    </ul>
+                  </article>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+                    <thead className="text-xs uppercase tracking-wide text-slate-500">
+                      <tr>
+                        <th className="px-3 py-2">Category</th>
+                        <th className="px-3 py-2 text-right">Attendees</th>
+                        <th className="px-3 py-2 text-right">Invited guests</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 text-slate-600">
+                      {report.categories.map((category) => (
+                        <tr key={category.category}>
+                          <td className="px-3 py-2 font-medium text-slate-800">{category.label}</td>
+                          <td className="px-3 py-2 text-right">{category.attendeeCount}</td>
+                          <td className="px-3 py-2 text-right">{category.guestCount}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-700">Recent attendees</h3>
+                  {report.attendees.length === 0 ? (
+                    <p className="mt-2 text-sm text-slate-500">No attendance recorded yet.</p>
+                  ) : (
+                    <ul className="mt-2 grid gap-2 md:grid-cols-2">
+                      {report.attendees.slice(0, 6).map((attendee) => (
+                        <li key={attendee.id} className="rounded-xl border border-slate-100 p-3 text-sm text-slate-600">
+                          <p className="font-medium text-slate-800">
+                            {attendee.name} ·{' '}
+                            <span className="text-xs uppercase tracking-wide text-slate-400">
+                              {attendee.categoryLabel}
+                            </span>
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {formatColombo(attendee.checkIn)} → {formatColombo(attendee.checkOut)}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {attendee.isGuest ? 'Invited guest' : 'Member'} ·{' '}
+                            {attendee.totalMinutes != null ? `${attendee.totalMinutes} min` : '—'}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </section>
 
       <section className="rounded-3xl bg-white p-6 shadow">
