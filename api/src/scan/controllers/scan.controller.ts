@@ -1,4 +1,5 @@
 import { Body, Controller, Headers, Post, Req } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { SessionService } from '../../auth/services/session.service.js';
 import { ScanService } from '../services/scan.service.js';
@@ -12,6 +13,7 @@ export class ScanController {
   ) {}
 
   @Post()
+  @Throttle({ default: { limit: 150, ttl: 60 } })
   async processScan(
     @Req() req: Request,
     @Body() body: ScanRequestDto,

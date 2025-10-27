@@ -61,7 +61,10 @@ Document key decisions, external references, and verification evidence per phase
 
 ## Phase 7 – Hardening & SRE
 
-- _Pending_
+- Enabled global Helmet middleware (CSP, HSTS, referrer-policy) with proxy trust to lock down API responses; documented controls in `docs/security.md`.
+- Introduced configurable rate limiting via `@nestjs/throttler` with tightened caps on `/auth`, `/scan`, and member token endpoints (defaults exposed as `RATE_LIMIT_*`).
+- Added SRE runbooks: `docs/runbooks/backups.md` (nightly pg_dump + restore drill) and `docs/runbooks/monitoring.md` (SLOs, alert routing, incident flow).
+- Updated README Operations section and ensured build/test suites pass with new dependencies (`helmet`, `@nestjs/throttler`).
 
 ## Phase 8 – E2E, A11y, Performance
 

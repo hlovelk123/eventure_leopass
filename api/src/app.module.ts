@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { validateEnv } from './config/env.validation.js';
@@ -29,6 +31,18 @@ import { NotificationsModule } from './notifications/notifications.module.js';
       }),
       inject: [ConfigService]
     }),
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        throttlers: [
+          {
+            limit: configService.getOrThrow<number>('RATE_LIMIT_MAX'),
+            ttl: configService.getOrThrow<number>('RATE_LIMIT_TTL')
+          }
+        ]
+      }),
+      inject: [ConfigService]
+    }),
     PrismaModule,
     AuthModule,
     TokensModule,
@@ -37,6 +51,12 @@ import { NotificationsModule } from './notifications/notifications.module.js';
     NotificationsModule
   ],
   controllers: [AppController],
-  providers: [AppService]
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard
+    }
+  ]
 })
 export class AppModule {}

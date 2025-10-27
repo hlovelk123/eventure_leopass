@@ -15,6 +15,8 @@ const envSchema = z
     WEB_PUSH_VAPID_PRIVATE_KEY: z.string().min(10),
     WEB_PUSH_VAPID_SUBJECT: z.string().min(5),
     ENABLE_PUSH_NOTIFICATIONS: z.coerce.boolean().default(true),
+    RATE_LIMIT_TTL: z.coerce.number().int().positive().default(60),
+    RATE_LIMIT_MAX: z.coerce.number().int().positive().default(120),
     ZEPTO_API_KEY: z.string().optional(),
     ZEPTO_MAILAGENT_ALIAS: z.string().optional(),
     ZEPTO_SMTP_HOST: z.string().optional(),

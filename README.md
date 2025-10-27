@@ -115,6 +115,13 @@ All requests that mutate auth state must include the Turnstile token (see `Turns
 - GitHub Actions workflow `.github/workflows/ci.yml` runs lint, typecheck, build, unit tests, and Playwright suites on pushes/PRs.
 - Prisma migrations live under `prisma/migrations`. Apply locally with `npx prisma migrate deploy` after setting `DATABASE_URL`.
 
+## Operations & Hardening
+
+- Global security headers (CSP, HSTS, referrer policy) enforced via Helmet in the NestJS bootstrap; configure trusted origin with `APP_URL`.
+- Rate limiting enabled through `@nestjs/throttler` (defaults via `RATE_LIMIT_TTL`/`RATE_LIMIT_MAX`), with tighter caps on auth/token/scan endpoints.
+- Backups and monitoring runbooks live under `docs/runbooks/` (`backups.md`, `monitoring.md`) covering nightly `pg_dump`, restore drills, SLOs, and alert routing.
+- Production deploys should run behind Nginx/Cloudflare with HTTPS enforced; ensure Redis/Postgres credentials are rotated quarterly per security guidance.
+
 ## Documentation
 
 - `docs/security.md` – security rationale (update as hardening continues)

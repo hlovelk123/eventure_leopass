@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Post, Req, Res, UnauthorizedException } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { AuthService } from '../services/auth.service.js';
 import { TurnstileService } from '../services/turnstile.service.js';
@@ -12,6 +13,9 @@ import { UsersService } from '../../users/users.service.js';
 
 @Controller('auth')
 export class AuthController {
+  private static readonly OTP_THROTTLE = { default: { limit: 5, ttl: 60 } } as const;
+  private static readonly PASSKEY_THROTTLE = { default: { limit: 20, ttl: 60 } } as const;
+
   constructor(
     private readonly authService: AuthService,
     private readonly turnstileService: TurnstileService,
@@ -29,6 +33,7 @@ export class AuthController {
   }
 
   @Post('otp/request')
+  @Throttle(AuthController.OTP_THROTTLE)
   async requestOtp(@Body() body: RequestOtpDto) {
     await this.turnstileService.verify(body.turnstileToken);
     const { challengeId, user } = await this.authService.requestOtp(body.email, body.turnstileToken);
@@ -36,6 +41,7 @@ export class AuthController {
   }
 
   @Post('otp/verify')
+  @Throttle(AuthController.OTP_THROTTLE)
   async verifyOtp(@Body() body: VerifyOtpDto, @Res({ passthrough: true }) res: Response) {
     const user = await this.authService.verifyOtp({
       email: body.email,
@@ -65,6 +71,7 @@ export class AuthController {
   }
 
   @Post('webauthn/register/options')
+  @Throttle(AuthController.PASSKEY_THROTTLE)
   async getRegistrationOptions(@Req() req: Request) {
     const { user } = await this.sessionService.validateFromRequest(req.headers);
     const { options, challengeId } = await this.authService.generatePasskeyRegistrationOptions(user);
@@ -72,6 +79,7 @@ export class AuthController {
   }
 
   @Post('webauthn/register/verify')
+  @Throttle(AuthController.PASSKEY_THROTTLE)
   async verifyRegistration(@Req() req: Request, @Body() body: WebauthnRegisterVerifyDto) {
     const { user } = await this.sessionService.validateFromRequest(req.headers);
     await this.authService.verifyPasskeyRegistration(user, body.credential, body.challengeId);
@@ -79,6 +87,7 @@ export class AuthController {
   }
 
   @Post('webauthn/login/options')
+  @Throttle(AuthController.PASSKEY_THROTTLE)
   async getLoginOptions(@Body() body: WebauthnLoginOptionsDto) {
     if (body.turnstileToken) {
       await this.turnstileService.verify(body.turnstileToken);
@@ -88,6 +97,7 @@ export class AuthController {
   }
 
   @Post('webauthn/login/verify')
+  @Throttle(AuthController.PASSKEY_THROTTLE)
   async verifyLogin(@Body() body: WebauthnLoginVerifyDto, @Res({ passthrough: true }) res: Response) {
     const user = await this.usersService.findByEmail(body.email.toLowerCase());
     if (!user) {
